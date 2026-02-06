@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Drive Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <!-- ─── Sidebar ─────────────────────────────────────── -->
+    <aside id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" /></svg>
+                <span>Drive Agent</span>
+            </div>
+            <button class="btn-icon" id="newChatBtn" title="New chat">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" /></svg>
+            </button>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-label">Quick Actions</div>
+            <button class="quick-action" data-cmd="List all files in my Google Drive root folder">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" /></svg>
+                List my files
+            </button>
+            <button class="quick-action" data-cmd="Search my Drive for recent documents">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                Search Drive
+            </button>
+            <button class="quick-action" data-cmd="Create a new Google Doc titled 'Meeting Notes' in my root folder">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                Create a Doc
+            </button>
+            <button class="quick-action" data-cmd="Create a folder called 'Projects' in my Drive">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
+                Create a Folder
+            </button>
+        </div>
+
+        <div class="sidebar-footer">
+            <div id="userInfo" class="user-info hidden">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <div class="user-details">
+                    <span id="userName">User</span>
+                    <span id="userEmail" class="user-email">user@example.com</span>
+                </div>
+                <button class="btn-icon" id="logoutBtn" title="Logout">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" /></svg>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ─── Main Chat Area ──────────────────────────────── -->
+    <main class="main">
+        <!-- Top bar -->
+        <header class="topbar">
+            <button class="btn-icon sidebar-toggle" id="sidebarToggle">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="18" x2="21" y2="18" /></svg>
+            </button>
+            <h1 class="topbar-title">AI Drive Agent</h1>
+            <div class="topbar-actions">
+                <div id="statusDot" class="status-dot offline" title="Disconnected"></div>
+            </div>
+        </header>
+
+        <!-- Login overlay -->
+        <div id="loginOverlay" class="login-overlay">
+            <div class="login-card">
+                <div class="login-icon">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--accent)"
+                        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                        <path d="M2 17l10 5 10-5" />
+                        <path d="M2 12l10 5 10-5" /></svg>
+                </div>
+                <h2>Welcome to Drive Agent</h2>
+                <p>An AI assistant that manages your Google Drive. Sign in with Google to get started.</p>
+                <button id="loginBtn" class="btn-primary btn-google">
+                    <svg width="20" height="20" viewBox="0 0 48 48">
+                        <path fill="#EA4335"
+                            d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                        <path fill="#4285F4"
+                            d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                        <path fill="#FBBC05"
+                            d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                        <path fill="#34A853"
+                            d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                    </svg>
+                    Sign in with Google
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat messages -->
+        <div id="chatArea" class="chat-area hidden">
+            <div id="messages" class="messages">
+                <!-- Welcome message -->
+                <div class="welcome-screen" id="welcomeScreen">
+                    <div class="welcome-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)"
+                            stroke-width="1.5">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                            <path d="M2 17l10 5 10-5" />
+                            <path d="M2 12l10 5 10-5" /></svg>
+                    </div>
+                    <h2>How can I help with your Drive?</h2>
+                    <p>I can list files, create documents, organise folders, search, and more.</p>
+                    <div class="welcome-chips">
+                        <button class="chip" data-cmd="What files are in my Drive?">📁 What's in my Drive?</button>
+                        <button class="chip" data-cmd="Create a new document titled 'Ideas'">📝 Create a
+                            document</button>
+                        <button class="chip" data-cmd="Create a folder called 'Work' in my Drive">📂 Make a
+                            folder</button>
+                        <button class="chip" data-cmd="Search my Drive for PDFs">🔍 Search for PDFs</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input bar -->
+            <div class="input-bar">
+                <div class="input-wrapper">
+                    <textarea id="messageInput" placeholder="Ask me anything about your Drive…" rows="1"
+                        autofocus></textarea>
+                    <button id="voiceBtn" class="voice-btn" title="Voice input">
+                        <svg class="mic-icon" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                            <line x1="12" y1="19" x2="12" y2="23" />
+                            <line x1="8" y1="23" x2="16" y2="23" /></svg>
+                        <svg class="stop-icon hidden" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+                    </button>
+                    <button id="ttsToggle" class="tts-btn" title="Toggle read-aloud">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                            <path d="M15.54 8.46a5 5 0 0 1 0 7.07" /></svg>
+                    </button>
+                    <button id="sendBtn" class="send-btn" title="Send" disabled>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13" />
+                            <polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+                    </button>
+                </div>
+                <div class="input-footer">Drive Agent can make mistakes. Verify important actions.</div>
+            </div>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
