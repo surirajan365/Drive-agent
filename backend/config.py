@@ -25,8 +25,12 @@ class Settings(BaseSettings):
     ]
 
     # ── Google Gemini ─────────────────────────────────────────────
-    GEMINI_API_KEY: str
-    GEMINI_MODEL: str = "gemini-2.0-flash"
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+
+    # ── Groq (primary LLM) ────────────────────────────────────────
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
     # ── Security ──────────────────────────────────────────────────
     ENCRYPTION_KEY: str  # Fernet key (32 url-safe base64 bytes)

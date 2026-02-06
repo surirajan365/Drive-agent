@@ -1,17 +1,16 @@
-"""Google Gemini integration for research, summarisation, and planning.
+"""LLM integration — Groq (primary) + Gemini (fallback / research).
 
 Provides:
-  • A factory for the LangChain ``ChatGoogleGenerativeAI`` wrapper used by
-    the agent executor.
-  • Direct helper methods for topic research and text summarisation that
-    bypass the agent loop when a single LLM call suffices.
+  • A factory for the LangChain chat model used by the agent executor.
+    → Uses Groq (Llama 3.3 70B) by default for high free-tier limits.
+    → Falls back to Google Gemini if Groq is unavailable.
+  • Direct helper methods for topic research and text summarisation.
 """
 
 import logging
 from typing import Optional
 
-import google.generativeai as genai
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.language_models.chat_models import BaseChatModel
 
 from backend.config import get_settings
 
@@ -19,40 +18,78 @@ logger = logging.getLogger(__name__)
 
 
 class GeminiService:
-    """Thin, reusable wrapper around the Google Gemini SDK."""
+    """Multi-provider LLM wrapper — Groq primary, Gemini fallback."""
 
     def __init__(
         self,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
     ) -> None:
-        settings = get_settings()
-        self._api_key = api_key or settings.GEMINI_API_KEY
-        self._model_name = model or settings.GEMINI_MODEL
-        genai.configure(api_key=self._api_key)
-        self._model = genai.GenerativeModel(self._model_name)
+        self._settings = get_settings()
 
-    # ── LangChain integration ─────────────────────────────────────
+        # Gemini (for research / summarisation / fallback)
+        self._gemini_key = api_key or self._settings.GEMINI_API_KEY
+        self._gemini_model = model or self._settings.GEMINI_MODEL
 
-    def get_langchain_llm(
+        # Groq (primary agent LLM)
+        self._groq_key = self._settings.GROQ_API_KEY
+        self._groq_model = self._settings.GROQ_MODEL
+
+        # Initialise Gemini SDK only if key is available
+        self._gemini_genai_model = None
+        if self._gemini_key:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=self._gemini_key)
+                self._gemini_genai_model = genai.GenerativeModel(self._gemini_model)
+            except Exception as exc:
+                logger.warning("Gemini SDK init failed: %s", exc)
+
+    # ── Agent LLM (Groq primary, Gemini fallback) ────────────────
+
+    def get_agent_llm(self, temperature: float = 0.2) -> BaseChatModel:
+        """Return the best available LangChain chat model for the agent.
+
+        Priority: Groq → Gemini → error
+        """
+        if self._groq_key:
+            try:
+                from langchain_groq import ChatGroq
+                logger.info("Using Groq (%s) as agent LLM", self._groq_model)
+                return ChatGroq(
+                    model=self._groq_model,
+                    api_key=self._groq_key,
+                    temperature=temperature,
+                )
+            except Exception as exc:
+                logger.warning("Groq init failed, falling back to Gemini: %s", exc)
+
+        return self._get_gemini_langchain(temperature)
+
+    # ── Gemini-only LangChain model ───────────────────────────────
+
+    def _get_gemini_langchain(
         self, temperature: float = 0.2
-    ) -> ChatGoogleGenerativeAI:
-        """Return a LangChain-compatible chat model backed by Gemini."""
+    ) -> BaseChatModel:
+        """Return a LangChain model backed by Gemini."""
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        logger.info("Using Gemini (%s) as LLM", self._gemini_model)
         return ChatGoogleGenerativeAI(
-            model=self._model_name,
-            google_api_key=self._api_key,
+            model=self._gemini_model,
+            google_api_key=self._gemini_key,
             temperature=temperature,
             convert_system_message_to_human=True,
         )
 
+    # Keep legacy method for backward compatibility
+    def get_langchain_llm(self, temperature: float = 0.2) -> BaseChatModel:
+        """Legacy alias — returns agent LLM."""
+        return self.get_agent_llm(temperature)
+
     # ── Direct research call ──────────────────────────────────────
 
     def research_topic(self, topic: str) -> str:
-        """Generate a comprehensive, Markdown-formatted research article.
-
-        Returns:
-            A structured article with headings, sections, and conclusions.
-        """
+        """Generate a comprehensive, Markdown-formatted research article."""
         prompt = (
             f"You are a world-class researcher and technical writer.\n"
             f"Write a comprehensive, well-structured research article on "
@@ -64,12 +101,24 @@ class GeminiService:
             f"Key Concepts, Current Trends, Real-World Applications, "
             f"Challenges & Limitations, Future Outlook, Conclusion\n"
             f"- Be factual, balanced, and informative\n"
-            f"- Aim for 800–1 200 words\n"
+            f"- Aim for 800\u20131 200 words\n"
             f"- Do NOT include unverifiable references or citations\n"
         )
-        response = self._model.generate_content(prompt)
-        logger.info("Research generated for topic: %s", topic)
-        return response.text
+
+        # Try Gemini first for research (better at long-form), then Groq
+        if self._gemini_genai_model:
+            try:
+                response = self._gemini_genai_model.generate_content(prompt)
+                logger.info("Research generated (Gemini) for topic: %s", topic)
+                return response.text
+            except Exception as exc:
+                logger.warning("Gemini research failed: %s", exc)
+
+        # Fallback to Groq via LangChain
+        llm = self.get_agent_llm(temperature=0.3)
+        response = llm.invoke(prompt)
+        logger.info("Research generated (Groq) for topic: %s", topic)
+        return response.content
 
     # ── Summarisation ─────────────────────────────────────────────
 
@@ -79,17 +128,22 @@ class GeminiService:
             f"Summarise the following text in at most {max_words} words. "
             f"Preserve key facts and conclusions.\n\n{text}"
         )
-        response = self._model.generate_content(prompt)
-        return response.text
+
+        if self._gemini_genai_model:
+            try:
+                response = self._gemini_genai_model.generate_content(prompt)
+                return response.text
+            except Exception as exc:
+                logger.warning("Gemini summarise failed: %s", exc)
+
+        llm = self.get_agent_llm(temperature=0.1)
+        response = llm.invoke(prompt)
+        return response.content
 
     # ── Action planning ───────────────────────────────────────────
 
     def plan_actions(self, command: str, context: str = "") -> str:
-        """Return a JSON action plan for the given user command.
-
-        This is used for the *preview mode* so the user can inspect what
-        the agent intends to do before execution.
-        """
+        """Return a JSON action plan for the given user command."""
         prompt = (
             "You are an AI agent planner.  Given the user's command and "
             "optional context, produce a JSON array of action steps.\n"
@@ -103,5 +157,14 @@ class GeminiService:
             f"Context: {context or 'None'}\n\n"
             "Respond ONLY with the JSON array."
         )
-        response = self._model.generate_content(prompt)
-        return response.text
+
+        if self._gemini_genai_model:
+            try:
+                response = self._gemini_genai_model.generate_content(prompt)
+                return response.text
+            except Exception:
+                pass
+
+        llm = self.get_agent_llm(temperature=0.1)
+        response = llm.invoke(prompt)
+        return response.content

@@ -320,7 +320,7 @@ class DriveAgent:
     # ──────────────────────────────────────────────────────────────
 
     def _build_agent(self) -> AgentExecutor:
-        llm = self._gemini.get_langchain_llm(temperature=0.1)
+        llm = self._gemini.get_agent_llm(temperature=0.1)
 
         prompt = ChatPromptTemplate.from_messages(
             [
