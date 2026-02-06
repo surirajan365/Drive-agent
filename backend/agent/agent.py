@@ -342,6 +342,40 @@ class DriveAgent:
             return_intermediate_steps=True,
         )
 
+    # ──────────────────────────────────────────────────────────────
+    #  Casual message detection
+    # ──────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _is_casual_message(command: str) -> bool:
+        """Return True if the message is casual chat, not a Drive task."""
+        cmd = command.strip().lower()
+        casual_patterns = [
+            "hello", "hi", "hey", "howdy", "greetings",
+            "how are you", "how r u", "what's up", "whats up",
+            "good morning", "good afternoon", "good evening",
+            "thank you", "thanks", "thx", "ty",
+            "bye", "goodbye", "see you", "ok", "okay",
+            "who are you", "what are you", "what can you do",
+            "nice", "cool", "great", "awesome", "got it",
+        ]
+        # Exact match or starts with a casual phrase
+        for pattern in casual_patterns:
+            if cmd == pattern or cmd.startswith(pattern + " ") or cmd.startswith(pattern + ",") or cmd.startswith(pattern + "!"):
+                return True
+        # Very short messages (< 6 words) with no Drive-related keywords
+        drive_keywords = [
+            "file", "folder", "doc", "document", "drive", "create",
+            "search", "find", "list", "write", "read", "research",
+            "move", "copy", "delete", "share", "rename", "upload",
+            "download", "organize", "open", "make", "add", "append",
+            "summarize", "summarise", "memory", "remember", "recall",
+        ]
+        words = cmd.split()
+        if len(words) <= 5 and not any(kw in cmd for kw in drive_keywords):
+            return True
+        return False
+
     # ══════════════════════════════════════════════════════════════
     #  Public interface
     # ══════════════════════════════════════════════════════════════
@@ -368,16 +402,20 @@ class DriveAgent:
         logger.info("[%s] Executing: %s", self._user_id, command)
 
         try:
-            # ── 1. Build rich memory context ──────────────────────
-            memory_context = self._memory.get_context_for_agent(
-                max_recent=10
-            )
+            # ── 1. Build rich memory context (skip for casual chat) ──
+            is_casual = self._is_casual_message(command)
 
-            enriched_input = (
-                f"{command}\n\n"
-                f"═══ MEMORY CONTEXT (use to inform your actions) ═══\n"
-                f"{memory_context}"
-            )
+            if is_casual:
+                enriched_input = command
+            else:
+                memory_context = self._memory.get_context_for_agent(
+                    max_recent=10
+                )
+                enriched_input = (
+                    f"{command}\n\n"
+                    f"═══ MEMORY CONTEXT (use to inform your actions) ═══\n"
+                    f"{memory_context}"
+                )
 
             # ── 2. Run the agent ──────────────────────────────────
             result = self._executor.invoke(
@@ -432,27 +470,29 @@ class DriveAgent:
                     except Exception:
                         logger.debug("Could not save research summary")
 
-            # ── 5c. Save conversation log entry ───────────────────
-            self._memory.append_conversation(
-                {
-                    "command": command,
-                    "summary": smart_summary,
-                    "tools_used": [s["tool"] for s in steps],
-                    "topics": topics_found,
-                    "folders": folders_found,
-                }
-            )
-
-            # ── 5d. Learn user patterns ───────────────────────────
-            try:
-                self._memory.update_learned_patterns(
-                    command=command,
-                    tools_used=[s["tool"] for s in steps],
-                    folders_touched=folders_found,
-                    topics=topics_found,
+            # ── 5c. Save conversation log entry (skip for casual) ──
+            if not is_casual:
+                self._memory.append_conversation(
+                    {
+                        "command": command,
+                        "summary": smart_summary,
+                        "tools_used": [s["tool"] for s in steps],
+                        "topics": topics_found,
+                        "folders": folders_found,
+                    }
                 )
-            except Exception:
-                logger.debug("Pattern learning failed (non-fatal)")
+
+            # ── 5d. Learn user patterns (skip for casual) ────────
+            if not is_casual:
+                try:
+                    self._memory.update_learned_patterns(
+                        command=command,
+                        tools_used=[s["tool"] for s in steps],
+                        folders_touched=folders_found,
+                        topics=topics_found,
+                    )
+                except Exception:
+                    logger.debug("Pattern learning failed (non-fatal)")
 
             return {"status": "completed", "result": output, "steps": steps}
 
