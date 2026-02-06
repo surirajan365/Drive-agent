@@ -343,12 +343,129 @@ body { display: flex; }
   max-width: 780px; margin-left: auto; margin-right: auto;
 }
 
-/* ── Responsive ────────────────────────────────────── */
+/* ── Responsive: Tablet (≤ 1024px) ─────────────────── */
+@media (max-width: 1024px) {
+  :root { --sidebar-width: 260px; }
+
+  .msg-row { max-width: 95%; }
+  .input-wrapper, .input-footer { max-width: 95%; }
+
+  .msg-bubble { max-width: 90%; }
+}
+
+/* ── Responsive: Mobile (≤ 768px) ──────────────────── */
 @media (max-width: 768px) {
-  .sidebar { position: fixed; left: 0; top: 0; }
-  .sidebar:not(.collapsed) {
-    box-shadow: 0 0 40px rgba(0,0,0,.5);
+  :root { --sidebar-width: 280px; --topbar-height: 50px; }
+
+  /* Sidebar becomes overlay */
+  .sidebar {
+    position: fixed; left: 0; top: 0;
+    height: 100vh; height: 100dvh;
+    z-index: 200;
+    transform: translateX(0);
   }
+  .sidebar.collapsed {
+    transform: translateX(-100%);
+    opacity: 0; pointer-events: none;
+  }
+  .sidebar:not(.collapsed) {
+    box-shadow: 0 0 40px rgba(0,0,0,.6);
+  }
+
+  /* Overlay backdrop when sidebar is open */
+  .sidebar-backdrop {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.5);
+    z-index: 199;
+  }
+  .sidebar-backdrop.active {
+    display: block;
+  }
+
+  /* Main takes full width */
+  .main { width: 100vw; }
+
+  /* Topbar compact */
+  .topbar { padding: 0 12px; gap: 8px; }
+  .topbar-title { font-size: 14px; }
+
+  /* Messages area */
+  .messages { padding: 16px 10px; gap: 12px; }
+  .msg-row { max-width: 100%; }
+  .msg-bubble { max-width: 88%; padding: 10px 14px; font-size: 14px; }
+  .msg-avatar { width: 28px; height: 28px; font-size: 12px; }
+
+  /* Welcome screen */
+  .welcome-screen { padding: 24px 16px; gap: 10px; }
+  .welcome-screen h2 { font-size: 18px; }
+  .welcome-screen p { font-size: 13px; }
+  .welcome-chips { gap: 6px; }
+  .chip { padding: 6px 12px; font-size: 12px; }
+
+  /* Input bar */
+  .input-bar { padding: 8px 10px 12px; }
+  .input-wrapper {
+    max-width: 100%; padding: 6px 10px;
+    gap: 6px; border-radius: var(--radius-sm);
+  }
+  #messageInput { font-size: 16px; /* prevents iOS zoom on focus */ }
+  .send-btn { width: 34px; height: 34px; }
+  .voice-btn { width: 34px; height: 34px; }
+  .tts-btn { width: 28px; height: 28px; }
+  .input-footer { font-size: 10px; margin-top: 6px; max-width: 100%; }
+
+  /* Login card */
+  .login-card { padding: 32px 20px; }
+  .login-card h2 { font-size: 20px; }
+  .login-card p { font-size: 13px; margin-bottom: 24px; }
+  .login-icon svg { width: 48px; height: 48px; }
+  .btn-primary { padding: 10px 24px; font-size: 14px; }
+
+  /* Voice transcript */
+  .voice-transcript { font-size: 12px; padding: 6px 10px; }
+
+  /* Steps */
+  .msg-steps { font-size: 11px; padding: 8px 10px; }
+
+  /* User info in sidebar */
+  .user-avatar { width: 30px; height: 30px; font-size: 12px; }
+  .user-details span { font-size: 13px; }
+  .user-email { font-size: 10px; }
+}
+
+/* ── Responsive: Small phones (≤ 480px) ────────────── */
+@media (max-width: 480px) {
+  .msg-bubble { max-width: 92%; padding: 8px 12px; }
+  .msg-row.user .msg-avatar,
+  .msg-row.agent .msg-avatar { display: none; }
+  .msg-row { gap: 0; }
+
+  .welcome-chips { flex-direction: column; align-items: stretch; }
+  .chip { text-align: center; }
+
+  .quick-action { font-size: 12px; padding: 8px 10px; }
+  .sidebar-label { font-size: 10px; }
+
+  .login-card { padding: 24px 16px; }
+  .login-card h2 { font-size: 18px; }
+}
+
+/* ── Safe area for notched phones ──────────────────── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .input-bar {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+  .sidebar {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* ── Height fix for mobile browsers ────────────────── */
+@supports (height: 100dvh) {
+  html, body { height: 100dvh; }
+  .sidebar { height: 100dvh; }
+  .main { height: 100dvh; }
 }
 
 /* ── Voice button ──────────────────────────────────── */

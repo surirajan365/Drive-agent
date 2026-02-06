@@ -28,6 +28,7 @@ const userAvatar = $("#userAvatar");
 const statusDot = $("#statusDot");
 const sidebarToggle = $("#sidebarToggle");
 const sidebar = $("#sidebar");
+const sidebarBackdrop = $("#sidebarBackdrop");
 
 // ═══════════════════════════════════════════════════════════════════
 //  Auth
@@ -333,10 +334,40 @@ newChatBtn.addEventListener("click", () => {
     input.focus();
 });
 
-// Sidebar toggle
-sidebarToggle.addEventListener("click", () => {
+// Sidebar toggle (with mobile backdrop)
+function toggleSidebar() {
     sidebar.classList.toggle("collapsed");
+    const isOpen = !sidebar.classList.contains("collapsed");
+    if (window.innerWidth <= 768) {
+        sidebarBackdrop.classList.toggle("active", isOpen);
+        document.body.style.overflow = isOpen ? "hidden" : "";
+    }
+}
+
+sidebarToggle.addEventListener("click", toggleSidebar);
+
+// Close sidebar on backdrop click (mobile)
+sidebarBackdrop.addEventListener("click", () => {
+    sidebar.classList.add("collapsed");
+    sidebarBackdrop.classList.remove("active");
+    document.body.style.overflow = "";
 });
+
+// Close sidebar when selecting a quick action on mobile
+document.querySelectorAll(".quick-action, .chip").forEach(btn => {
+    btn.addEventListener("click", () => {
+        if (window.innerWidth <= 768 && !sidebar.classList.contains("collapsed")) {
+            sidebar.classList.add("collapsed");
+            sidebarBackdrop.classList.remove("active");
+            document.body.style.overflow = "";
+        }
+    });
+});
+
+// Auto-collapse sidebar on mobile when page loads
+if (window.innerWidth <= 768) {
+    sidebar.classList.add("collapsed");
+}
 
 // Scroll helper
 function scrollToBottom() {
