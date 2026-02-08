@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
 
+    # ── Tavily (web search) ────────────────────────────────────────
+    TAVILY_API_KEY: str = ""
+
     # ── Security ──────────────────────────────────────────────────
     ENCRYPTION_KEY: str  # Fernet key (32 url-safe base64 bytes)
     JWT_SECRET: str

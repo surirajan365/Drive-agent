@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 
 from backend.agent.memory import DriveMemory
 from backend.agent.prompt import SYSTEM_PROMPT
+from backend.config import get_settings
 from backend.services.gemini import GeminiService
 from backend.tools import docs_tools, drive_tools
 
@@ -102,6 +103,15 @@ class SaveMemoryNoteInput(BaseModel):
     )
     content: str = Field(
         description="The note or summary to remember for next time.",
+    )
+
+
+class WebSearchInput(BaseModel):
+    query: str = Field(
+        description="The search query to look up on the web (e.g. 'latest AI news 2026', 'Python 3.13 new features').",
+    )
+    max_results: int = Field(
+        default=5, description="Maximum number of search results to return (1-10).",
     )
 
 
@@ -222,6 +232,33 @@ class DriveAgent:
                 default=str,
             )
 
+        def _web_search(query: str, max_results: int = 5) -> str:
+            """Search the web for real-time information, latest news, or current events."""
+            settings = get_settings()
+            if not settings.TAVILY_API_KEY:
+                return json.dumps({"error": "Web search not configured — TAVILY_API_KEY is missing."})
+            try:
+                from tavily import TavilyClient
+                client = TavilyClient(api_key=settings.TAVILY_API_KEY)
+                response = client.search(
+                    query=query,
+                    max_results=min(max_results, 10),
+                    include_answer=True,
+                )
+                results = []
+                if response.get("answer"):
+                    results.append({"type": "answer", "content": response["answer"]})
+                for r in response.get("results", []):
+                    results.append({
+                        "title": r.get("title", ""),
+                        "url": r.get("url", ""),
+                        "snippet": r.get("content", "")[:500],
+                    })
+                return json.dumps(results, indent=2, default=str)
+            except Exception as exc:
+                logger.error("Web search failed: %s", exc)
+                return json.dumps({"error": f"Web search failed: {exc}"})
+
         return [
             StructuredTool.from_function(
                 func=_list_drive_files,
@@ -315,6 +352,18 @@ class DriveAgent:
                     "remembering about the user or their work."
                 ),
                 args_schema=SaveMemoryNoteInput,
+            ),
+            StructuredTool.from_function(
+                func=_web_search,
+                name="web_search",
+                description=(
+                    "Search the internet for real-time information, latest "
+                    "news, current events, or any topic that needs up-to-date "
+                    "data. Use this when the user asks about recent news, "
+                    "current trends, live data, or anything beyond your "
+                    "training knowledge cutoff."
+                ),
+                args_schema=WebSearchInput,
             ),
         ]
 

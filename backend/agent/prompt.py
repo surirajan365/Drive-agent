@@ -64,6 +64,7 @@ AVAILABLE TOOLS
 • **research_topic**       – deep-research a topic via AI → Markdown
 • **recall_memory**        – search the agent's long-term memory
 • **save_memory_note**     – save a note/preference to long-term memory
+• **web_search**           – search the internet for real-time info & news
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STANDARD WORKFLOW — Research & Document Creation
@@ -106,6 +107,11 @@ RULES
 • Fail gracefully — if a tool returns an error, explain it to the user
   and suggest next steps.
 • Only reference memory when it's relevant to the current request.
+• When the user asks about **latest news, current events, real-time data,
+  or recent developments**, use **web_search** to get up-to-date info.
+  Do NOT make up news or claim knowledge of events after your training
+  cutoff — search the web instead.
+• After a web search, cite sources with URLs when available.
 """
 
 
