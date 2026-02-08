@@ -9,6 +9,8 @@ let token = localStorage.getItem("agent_token") || null;
 let userInfo = JSON.parse(localStorage.getItem("agent_user") || "null");
 let chatHistory = [];
 let isSending = false;
+let selectedModelId = localStorage.getItem("agent_model") || null;
+let availableModels = [];
 
 // ── DOM refs ─────────────────────────────────────────────────────
 const $ = (s) => document.querySelector(s);
@@ -29,6 +31,10 @@ const statusDot = $("#statusDot");
 const sidebarToggle = $("#sidebarToggle");
 const sidebar = $("#sidebar");
 const sidebarBackdrop = $("#sidebarBackdrop");
+const modelBtn = $("#modelBtn");
+const modelDropdown = $("#modelDropdown");
+const modelSelector = $("#modelSelector");
+const modelNameEl = $("#modelName");
 
 // ═══════════════════════════════════════════════════════════════════
 //  Auth
@@ -86,6 +92,7 @@ function showChat() {
         userAvatar.textContent = (userInfo.name || userInfo.email || "U")[0].toUpperCase();
     }
     input.focus();
+    loadModels();
 }
 
 // ── Login flow ───────────────────────────────────────────────────
@@ -208,6 +215,92 @@ function removeTypingIndicator() {
     if (el) el.remove();
 }
 
+// ═══════════════════════════════════════════════════════════════════
+//  Model Selector
+// ═══════════════════════════════════════════════════════════════════
+
+async function loadModels() {
+    try {
+        const res = await fetch(`${API}/models`);
+        const data = await res.json();
+        availableModels = data.models || [];
+        renderModelDropdown();
+        // Set default model if none selected
+        if (!selectedModelId && availableModels.length > 0) {
+            const defaultModel = availableModels.find(m => m.default) || availableModels[0];
+            selectModel(defaultModel.id, defaultModel.name);
+        } else if (selectedModelId) {
+            const saved = availableModels.find(m => m.id === selectedModelId);
+            if (saved) {
+                modelNameEl.textContent = saved.name;
+            }
+        }
+    } catch (err) {
+        console.warn("Failed to load models:", err);
+    }
+}
+
+function renderModelDropdown() {
+    modelDropdown.innerHTML = "";
+    availableModels.forEach(model => {
+        const opt = document.createElement("button");
+        opt.className = "model-option" + (model.id === selectedModelId ? " active" : "");
+        opt.innerHTML = `
+            <div class="model-option-name">
+                ${model.name}
+                ${model.default ? '<span class="model-option-badge">Default</span>' : ""}
+            </div>
+            <div class="model-option-desc">${model.description || ""}</div>
+        `;
+        opt.addEventListener("click", () => {
+            selectModel(model.id, model.name);
+            closeModelDropdown();
+        });
+        modelDropdown.appendChild(opt);
+    });
+}
+
+function selectModel(id, name) {
+    selectedModelId = id;
+    localStorage.setItem("agent_model", id);
+    modelNameEl.textContent = name;
+    // Update active state
+    modelDropdown.querySelectorAll(".model-option").forEach(opt => {
+        opt.classList.remove("active");
+    });
+    const activeOpt = [...modelDropdown.querySelectorAll(".model-option")].find(
+        opt => opt.querySelector(".model-option-name").textContent.trim().startsWith(name)
+    );
+    if (activeOpt) activeOpt.classList.add("active");
+}
+
+function closeModelDropdown() {
+    modelDropdown.classList.add("hidden");
+    modelSelector.classList.remove("open");
+}
+
+modelBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = !modelDropdown.classList.contains("hidden");
+    if (isOpen) {
+        closeModelDropdown();
+    } else {
+        modelDropdown.classList.remove("hidden");
+        modelSelector.classList.add("open");
+    }
+});
+
+// Close dropdown on outside click
+document.addEventListener("click", (e) => {
+    if (!modelSelector.contains(e.target)) {
+        closeModelDropdown();
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  Send message
+// ═══════════════════════════════════════════════════════════════════
+
 async function sendMessage(text) {
     if (!text.trim() || isSending) return;
     isSending = true;
@@ -232,6 +325,7 @@ async function sendMessage(text) {
             body: JSON.stringify({
                 command: text,
                 chat_history: chatHistory.slice(-10),
+                model_id: selectedModelId,
             }),
         });
 

@@ -425,6 +425,11 @@ body { display: flex; }
   /* Voice transcript */
   .voice-transcript { font-size: 12px; padding: 6px 10px; }
 
+  /* Model selector */
+  .model-btn .model-name { max-width: 90px; }
+  .model-btn { padding: 5px 8px; font-size: 11px; }
+  .model-dropdown { min-width: 240px; right: -40px; }
+
   /* Steps */
   .msg-steps { font-size: 11px; padding: 8px 10px; }
 
@@ -536,6 +541,65 @@ body { display: flex; }
 @keyframes wave {
   0%,100% { transform: scaleY(.5); }
   50%     { transform: scaleY(1); }
+}
+
+/* ── Model selector ─────────────────────────────────── */
+.model-selector {
+  position: relative;
+}
+
+.model-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 20px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text-secondary); font-size: 12px; cursor: pointer;
+  font-family: var(--font); white-space: nowrap;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.model-btn:hover {
+  background: var(--surface-hover); color: var(--text-primary);
+  border-color: var(--border-light);
+}
+.model-btn .model-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.model-btn .model-chevron {
+  transition: transform .2s;
+}
+.model-selector.open .model-chevron {
+  transform: rotate(180deg);
+}
+
+.model-dropdown {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  min-width: 280px; max-height: 340px; overflow-y: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  z-index: 300; padding: 6px;
+}
+.model-dropdown.hidden { display: none; }
+
+.model-option {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  cursor: pointer; transition: background .15s;
+  border: none; background: none; width: 100%;
+  text-align: left; font-family: var(--font);
+}
+.model-option:hover { background: var(--surface); }
+.model-option.active { background: var(--accent-subtle); border-left: 3px solid var(--accent); }
+
+.model-option-name {
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
+  display: flex; align-items: center; gap: 6px;
+}
+.model-option-desc {
+  font-size: 11px; color: var(--text-muted); line-height: 1.4;
+}
+.model-option-badge {
+  font-size: 9px; padding: 1px 6px; border-radius: 10px;
+  background: var(--accent); color: #fff; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .04em;
 }
 
 /* ── Utilities ─────────────────────────────────────── */

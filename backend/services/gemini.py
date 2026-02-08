@@ -45,37 +45,98 @@ class GeminiService:
             except Exception as exc:
                 logger.warning("Gemini SDK init failed: %s", exc)
 
-    # ── Agent LLM (Groq primary, Gemini fallback) ────────────────
+    # ── Available models registry ─────────────────────────────────
 
-    def get_agent_llm(self, temperature: float = 0.2) -> BaseChatModel:
-        """Return the best available LangChain chat model for the agent.
+    def get_available_models(self) -> list[dict]:
+        """Return list of available models the user can choose from."""
+        models = []
+        if self._groq_key:
+            models.append({
+                "id": "groq:llama-3.3-70b-versatile",
+                "name": "Llama 3.3 70B (Groq)",
+                "provider": "groq",
+                "description": "Best for tool calling & reasoning. 14,400 RPD free.",
+                "default": True,
+            })
+            models.append({
+                "id": "groq:llama-3.1-8b-instant",
+                "name": "Llama 3.1 8B (Groq)",
+                "provider": "groq",
+                "description": "Fastest & cheapest. Good for simple tasks.",
+            })
+            models.append({
+                "id": "groq:mixtral-8x7b-32768",
+                "name": "Mixtral 8x7B (Groq)",
+                "provider": "groq",
+                "description": "Strong multilingual model. 32K context.",
+            })
+        if self._gemini_key:
+            models.append({
+                "id": "gemini:gemini-2.5-flash",
+                "name": "Gemini 2.5 Flash",
+                "provider": "gemini",
+                "description": "Google's fast model. 20 RPD free tier.",
+            })
+            models.append({
+                "id": "gemini:gemini-2.5-pro",
+                "name": "Gemini 2.5 Pro",
+                "provider": "gemini",
+                "description": "Google's most capable model.",
+            })
+        return models
 
-        Priority: Groq → Gemini → error
+    # ── Agent LLM (supports model selection) ─────────────────────
+
+    def get_agent_llm(
+        self, temperature: float = 0.2, model_id: Optional[str] = None
+    ) -> BaseChatModel:
+        """Return a LangChain chat model for the agent.
+
+        Args:
+            temperature: Sampling temperature.
+            model_id: Optional model ID in format 'provider:model_name'.
+                      If None, uses Groq (primary) → Gemini (fallback).
         """
+        # If a specific model was requested, use it
+        if model_id:
+            provider, model_name = model_id.split(":", 1)
+            if provider == "groq" and self._groq_key:
+                return self._get_groq_llm(model_name, temperature)
+            elif provider == "gemini" and self._gemini_key:
+                return self._get_gemini_langchain(model_name, temperature)
+
+        # Default: Groq → Gemini fallback
         if self._groq_key:
             try:
-                from langchain_groq import ChatGroq
-                logger.info("Using Groq (%s) as agent LLM", self._groq_model)
-                return ChatGroq(
-                    model=self._groq_model,
-                    api_key=self._groq_key,
-                    temperature=temperature,
-                )
+                return self._get_groq_llm(self._groq_model, temperature)
             except Exception as exc:
                 logger.warning("Groq init failed, falling back to Gemini: %s", exc)
 
-        return self._get_gemini_langchain(temperature)
+        return self._get_gemini_langchain(self._gemini_model, temperature)
 
-    # ── Gemini-only LangChain model ───────────────────────────────
+    # ── Provider-specific LLM factories ───────────────────────────
+
+    def _get_groq_llm(
+        self, model_name: str, temperature: float = 0.2
+    ) -> BaseChatModel:
+        """Return a LangChain model backed by Groq."""
+        from langchain_groq import ChatGroq
+        logger.info("Using Groq (%s) as agent LLM", model_name)
+        return ChatGroq(
+            model=model_name,
+            api_key=self._groq_key,
+            temperature=temperature,
+        )
 
     def _get_gemini_langchain(
-        self, temperature: float = 0.2
+        self, model_name: Optional[str] = None, temperature: float = 0.2
     ) -> BaseChatModel:
         """Return a LangChain model backed by Gemini."""
         from langchain_google_genai import ChatGoogleGenerativeAI
-        logger.info("Using Gemini (%s) as LLM", self._gemini_model)
+        name = model_name or self._gemini_model
+        logger.info("Using Gemini (%s) as LLM", name)
         return ChatGoogleGenerativeAI(
-            model=self._gemini_model,
+            model=name,
             google_api_key=self._gemini_key,
             temperature=temperature,
             convert_system_message_to_human=True,

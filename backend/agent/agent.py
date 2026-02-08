@@ -124,9 +124,12 @@ class DriveAgent:
     correct user credentials are always in scope.
     """
 
-    def __init__(self, credentials: Credentials, user_id: str) -> None:
+    def __init__(
+        self, credentials: Credentials, user_id: str, model_id: Optional[str] = None
+    ) -> None:
         self._creds = credentials
         self._user_id = user_id
+        self._model_id = model_id
         self._gemini = GeminiService()
         self._memory = DriveMemory(credentials)
         self._tools = self._build_tools()
@@ -320,7 +323,9 @@ class DriveAgent:
     # ──────────────────────────────────────────────────────────────
 
     def _build_agent(self) -> AgentExecutor:
-        llm = self._gemini.get_agent_llm(temperature=0.1)
+        llm = self._gemini.get_agent_llm(
+            temperature=0.1, model_id=self._model_id
+        )
 
         prompt = ChatPromptTemplate.from_messages(
             [

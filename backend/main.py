@@ -121,6 +121,7 @@ class CommandRequest(BaseModel):
     """Payload for ``/agent/command`` and ``/agent/preview``."""
     command: str
     chat_history: list[dict] = []
+    model_id: Optional[str] = None
 
 
 class ConfirmRequest(BaseModel):
@@ -151,6 +152,13 @@ def health_check():
         "app": settings.APP_NAME,
         "version": "1.0.0",
     }
+
+
+@app.get("/models", tags=["system"])
+def list_models():
+    """Return available LLM models the user can choose from."""
+    gemini = GeminiService()
+    return {"models": gemini.get_available_models()}
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -211,14 +219,14 @@ def auth_logout(user_id: str = Depends(get_current_user)):
 # ═══════════════════════════════════════════════════════════════════
 
 
-def _get_agent(user_id: str) -> DriveAgent:
+def _get_agent(user_id: str, model_id: Optional[str] = None) -> DriveAgent:
     """Resolve Google credentials and instantiate a per-request agent."""
     creds = oauth.get_credentials(user_id)
     if creds is None:
         raise HTTPException(
             401, "Google credentials expired — please re-authenticate."
         )
-    return DriveAgent(creds, user_id)
+    return DriveAgent(creds, user_id, model_id=model_id)
 
 
 @app.post("/agent/command", response_model=CommandResponse, tags=["agent"])
@@ -230,7 +238,7 @@ def agent_command(
 
     The agent will reason, plan, and invoke tools to fulfil the request.
     """
-    agent = _get_agent(user_id)
+    agent = _get_agent(user_id, model_id=req.model_id)
     result = agent.execute(req.command, req.chat_history)
     return CommandResponse(**result)
 
