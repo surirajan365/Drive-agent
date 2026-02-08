@@ -70,6 +70,12 @@ class GeminiService:
                 "provider": "groq",
                 "description": "Strong multilingual model. 32K context.",
             })
+            models.append({
+                "id": "groq:openai/gpt-oss-120b",
+                "name": "GPT OSS 120B (Groq)",
+                "provider": "groq",
+                "description": "OpenAI open-source 120B. 131K context, 500 t/s.",
+            })
         if self._gemini_key:
             models.append({
                 "id": "gemini:gemini-2.5-flash",
