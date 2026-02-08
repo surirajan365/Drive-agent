@@ -78,6 +78,12 @@ class GeminiService:
                 "description": "Google's fast model. 20 RPD free tier.",
             })
             models.append({
+                "id": "gemini:gemini-2.0-flash",
+                "name": "Gemini 2.0 Flash",
+                "provider": "gemini",
+                "description": "Google's previous gen fast model. Stable & reliable.",
+            })
+            models.append({
                 "id": "gemini:gemini-2.5-pro",
                 "name": "Gemini 2.5 Pro",
                 "provider": "gemini",
