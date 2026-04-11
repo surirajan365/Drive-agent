@@ -120,6 +120,22 @@ class WebSearchInput(BaseModel):
 # ═══════════════════════════════════════════════════════════════════
 
 _pending_actions: dict[str, dict] = {}
+_CASUAL_PATTERNS = (
+    "hello", "hi", "hey", "howdy", "greetings",
+    "how are you", "how r u", "what's up", "whats up",
+    "good morning", "good afternoon", "good evening",
+    "thank you", "thanks", "thx", "ty",
+    "bye", "goodbye", "see you", "ok", "okay",
+    "who are you", "what are you", "what can you do",
+    "nice", "cool", "great", "awesome", "got it",
+)
+_DRIVE_KEYWORDS = (
+    "file", "folder", "doc", "document", "drive", "create",
+    "search", "find", "list", "write", "read", "research",
+    "move", "copy", "delete", "share", "rename", "upload",
+    "download", "organize", "open", "make", "add", "append",
+    "summarize", "summarise", "memory", "remember", "recall",
+)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -404,29 +420,13 @@ class DriveAgent:
     def _is_casual_message(command: str) -> bool:
         """Return True if the message is casual chat, not a Drive task."""
         cmd = command.strip().lower()
-        casual_patterns = [
-            "hello", "hi", "hey", "howdy", "greetings",
-            "how are you", "how r u", "what's up", "whats up",
-            "good morning", "good afternoon", "good evening",
-            "thank you", "thanks", "thx", "ty",
-            "bye", "goodbye", "see you", "ok", "okay",
-            "who are you", "what are you", "what can you do",
-            "nice", "cool", "great", "awesome", "got it",
-        ]
         # Exact match or starts with a casual phrase
-        for pattern in casual_patterns:
+        for pattern in _CASUAL_PATTERNS:
             if cmd == pattern or cmd.startswith(pattern + " ") or cmd.startswith(pattern + ",") or cmd.startswith(pattern + "!"):
                 return True
         # Very short messages (< 6 words) with no Drive-related keywords
-        drive_keywords = [
-            "file", "folder", "doc", "document", "drive", "create",
-            "search", "find", "list", "write", "read", "research",
-            "move", "copy", "delete", "share", "rename", "upload",
-            "download", "organize", "open", "make", "add", "append",
-            "summarize", "summarise", "memory", "remember", "recall",
-        ]
         words = cmd.split()
-        if len(words) <= 5 and not any(kw in cmd for kw in drive_keywords):
+        if len(words) <= 5 and not any(kw in cmd for kw in _DRIVE_KEYWORDS):
             return True
         return False
 

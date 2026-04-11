@@ -21,6 +21,7 @@ System:
 
 import logging
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -30,7 +31,7 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.staticfiles import StaticFiles
 from jose import JWTError, jwt
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from backend.agent.agent import DriveAgent
 from backend.agent.memory import DriveMemory
@@ -69,6 +70,12 @@ FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 oauth = GoogleOAuth()
 security = HTTPBearer(auto_error=False)
+
+
+@lru_cache()
+def _get_gemini_service() -> GeminiService:
+    """Return a cached Gemini service instance for shared read-only use."""
+    return GeminiService()
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -120,7 +127,7 @@ def get_current_user(
 class CommandRequest(BaseModel):
     """Payload for ``/agent/command`` and ``/agent/preview``."""
     command: str
-    chat_history: list[dict] = []
+    chat_history: list[dict] = Field(default_factory=list)
     model_id: Optional[str] = None
 
 
@@ -133,9 +140,9 @@ class CommandResponse(BaseModel):
     """Unified response envelope for all agent endpoints."""
     status: str
     result: str = ""
-    steps: list[dict] = []
+    steps: list[dict] = Field(default_factory=list)
     action_id: str = ""
-    preview: list[dict] = []
+    preview: list[dict] = Field(default_factory=list)
     message: str = ""
 
 
@@ -157,8 +164,7 @@ def health_check():
 @app.get("/models", tags=["system"])
 def list_models():
     """Return available LLM models the user can choose from."""
-    gemini = GeminiService()
-    return {"models": gemini.get_available_models()}
+    return {"models": _get_gemini_service().get_available_models()}
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -253,8 +259,7 @@ def agent_preview(
 
     Uses the Gemini planner to generate a structured JSON plan.
     """
-    gemini = GeminiService()
-    plan_text = gemini.plan_actions(req.command)
+    plan_text = _get_gemini_service().plan_actions(req.command)
     return CommandResponse(
         status="preview",
         result=plan_text,
@@ -373,4 +378,3 @@ def serve_index():
 # Static assets (CSS, JS) — must be mounted last so it doesn't
 # shadow API routes.
 app.mount("/", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend")
-
